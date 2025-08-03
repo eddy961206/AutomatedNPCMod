@@ -24,6 +24,7 @@
     <Compile Remove="UIManager.cs" />
     <Compile Remove="ConfigManager.cs" />
     <Compile Remove="WorkTask.cs" />
+    <Compile Remove="backup\**\*.cs" />
   </ItemGroup>
 
 </Project>
