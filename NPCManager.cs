@@ -31,7 +31,7 @@ namespace AutomatedNPCMod.Core
         /// <param name="position">초기 위치</param>
         /// <param name="spriteSheet">스프라이트 시트 경로</param>
         /// <returns>생성 성공 여부</returns>
-        public bool CreateNPC(string name, Vector2 position, string spriteSheet = null)
+        public bool CreateNPC(string name, Vector2 position, string? spriteSheet = null)
         {
             try
             {

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <GamePath>D:\Steam\steamapps\common\Stardew Valley</GamePath>
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
@@ -10,45 +9,21 @@
 
   <ItemGroup>
     <Reference Include="StardewModdingAPI">
-      <HintPath>$(GamePath)\StardewModdingAPI.dll</HintPath>
-    </Reference>
-    <Reference Include="MonoGame.Framework">
-      <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
-    </Reference>
-    <Reference Include="xTile">
-      <HintPath>$(GamePath)\xTile.dll</HintPath>
+      <HintPath>D:\Steam\steamapps\common\Stardew Valley\StardewModdingAPI.dll</HintPath>
+      <Private>false</Private>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
-  </ItemGroup>
-
-</Project>
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <GamePath>D:\Steam\steamapps\common\Stardew Valley</GamePath>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <EnableHarmony>true</EnableHarmony>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <Reference Include="StardewModdingAPI">
-      <HintPath>$(GamePath)\StardewModdingAPI.dll</HintPath>
-    </Reference>
-    <Reference Include="MonoGame.Framework">
-      <HintPath>$(GamePath)\MonoGame.Framework.dll</HintPath>
-    </Reference>
-    <Reference Include="xTile">
-      <HintPath>$(GamePath)\xTile.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
+    <Compile Remove="ModEntry.cs" />
+    <Compile Remove="NPCManager.cs" />
+    <Compile Remove="TaskManager.cs" />
+    <Compile Remove="CustomNPC.cs" />
+    <Compile Remove="AIController.cs" />
+    <Compile Remove="WorkExecutor.cs" />
+    <Compile Remove="UIManager.cs" />
+    <Compile Remove="ConfigManager.cs" />
+    <Compile Remove="WorkTask.cs" />
   </ItemGroup>
 
 </Project>

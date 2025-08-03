@@ -47,7 +47,7 @@ namespace AutomatedNPCMod.Core
     /// <summary>
     /// 모드 설정을 정의하는 클래스.
     /// </summary>
-    internal class ModConfig
+    public class ModConfig
     {
         public bool EnableAutomatedNPCs { get; set; } = true;
         public float ProfitMultiplier { get; set; } = 1.0f;
