@@ -481,13 +481,56 @@ namespace AutomatedNPCMod
                     
                     if (characters != null)
                     {
-                        var removeMethod = characters.GetType().GetMethod("Remove");
+                        // NPC 타입을 얻어서 구체적인 Remove 메서드 찾기
+                        var npcType = Type.GetType("StardewValley.NPC, Stardew Valley");
+                        var removeMethod = characters.GetType().GetMethod("Remove", new[] { npcType });
+                        
+                        if (removeMethod == null)
+                        {
+                            // 대안: Contains + Remove 조합 사용
+                            var containsMethod = characters.GetType().GetMethod("Contains");
+                            var removeAtMethod = characters.GetType().GetMethod("RemoveAt");
+                            var indexOfMethod = characters.GetType().GetMethod("IndexOf");
+                            removeMethod = characters.GetType().GetMethod("Remove", new[] { typeof(object) });
+                        }
+                        
                         int removedCount = 0;
                         
                         foreach (var npc in createdNPCs.ToList())
                         {
-                            var result = (bool)(removeMethod?.Invoke(characters, new[] { npc }) ?? false);
-                            if (result) removedCount++;
+                            try
+                            {
+                                if (removeMethod != null)
+                                {
+                                    var result = (bool)(removeMethod.Invoke(characters, new[] { npc }) ?? false);
+                                    if (result) removedCount++;
+                                }
+                                else
+                                {
+                                    // 대안: List에서 직접 제거 시도
+                                    var containsMethod = characters.GetType().GetMethod("Contains");
+                                    var indexOfMethod = characters.GetType().GetMethod("IndexOf");
+                                    var removeAtMethod = characters.GetType().GetMethod("RemoveAt");
+                                    
+                                    if (containsMethod != null && indexOfMethod != null && removeAtMethod != null)
+                                    {
+                                        var contains = (bool)(containsMethod.Invoke(characters, new[] { npc }) ?? false);
+                                        if (contains)
+                                        {
+                                            var index = (int)(indexOfMethod.Invoke(characters, new[] { npc }) ?? -1);
+                                            if (index >= 0)
+                                            {
+                                                removeAtMethod.Invoke(characters, new object[] { index });
+                                                removedCount++;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                this.Monitor.Log($"개별 NPC 제거 실패: {ex.Message}", LogLevel.Debug);
+                            }
                         }
                         
                         var totalCount = createdNPCs.Count;
