@@ -66,17 +66,8 @@ namespace AutomatedNPCMod.Core
         {
             try
             {
-                var playerPosition = Game1.player.getTileLocation();
-                var npcPosition = new Vector2(playerPosition.X + 2, playerPosition.Y);
-                
-                var npcName = $"Worker_{DateTime.Now.Ticks % 1000}";
-                
-                if (_npcManager.CreateNPC(npcName, npcPosition))
-                {
-                    Game1.addHUDMessage(new HUDMessage($"NPC '{npcName}' 생성됨!", HUDMessage.newQuest_type));
-                    _monitor.Log($"테스트 NPC '{npcName}' 생성 완료", LogLevel.Info);
-                }
-                else
+                var success = _npcManager.CreateTestNPC();
+                if (!success)
                 {
                     Game1.addHUDMessage(new HUDMessage("NPC 생성 실패!", HUDMessage.error_type));
                 }
@@ -95,33 +86,11 @@ namespace AutomatedNPCMod.Core
         {
             try
             {
-                var npcs = _npcManager.GetAllNPCs();
-                if (npcs.Count == 0)
-                {
-                    Game1.addHUDMessage(new HUDMessage("작업을 할당할 NPC가 없습니다!", HUDMessage.error_type));
-                    return;
-                }
-
-                var playerPosition = Game1.player.getTileLocation();
-                var taskPosition = new Vector2(playerPosition.X + 1, playerPosition.Y + 1);
-
-                var task = _taskManager.CreateTask(TaskType.Farming, taskPosition, TaskPriority.Normal);
-                
-                // 첫 번째 사용 가능한 NPC에게 작업 할당
-                var targetNPC = npcs[0];
-                if (_taskManager.AssignTask(targetNPC.Name, task))
-                {
-                    Game1.addHUDMessage(new HUDMessage($"'{targetNPC.Name}'에게 농사 작업 할당됨!", HUDMessage.newQuest_type));
-                    _monitor.Log($"농사 작업이 '{targetNPC.Name}'에게 할당됨", LogLevel.Info);
-                }
-                else
-                {
-                    Game1.addHUDMessage(new HUDMessage("작업 할당 실패!", HUDMessage.error_type));
-                }
+                _taskManager.AssignTaskToAvailableNPC(_npcManager);
             }
             catch (Exception ex)
             {
-                _monitor.Log($"농사 작업 할당 중 오류 발생: {ex.Message}", LogLevel.Error);
+                _monitor.Log($"작업 할당 중 오류: {ex.Message}", LogLevel.Error);
                 Game1.addHUDMessage(new HUDMessage("작업 할당 중 오류 발생!", HUDMessage.error_type));
             }
         }
@@ -131,30 +100,51 @@ namespace AutomatedNPCMod.Core
         /// </summary>
         private void ShowNPCInfo()
         {
+            ShowNPCStatus(_npcManager, _taskManager);
+        }
+
+        /// <summary>
+        /// NPC 상태 정보를 표시합니다.
+        /// </summary>
+        /// <param name="npcManager">NPC 매니저</param>
+        /// <param name="taskManager">작업 매니저</param>
+        public void ShowNPCStatus(NPCManager npcManager, TaskManager taskManager)
+        {
             try
             {
-                var npcs = _npcManager.GetAllNPCs();
+                var npcs = npcManager.GetAllNPCs();
                 if (npcs.Count == 0)
                 {
                     Game1.addHUDMessage(new HUDMessage("활성 NPC가 없습니다.", HUDMessage.newQuest_type));
+                    _monitor.Log("NPC 상태 확인: 활성 NPC 없음", LogLevel.Info);
                     return;
                 }
 
-                var infoMessage = $"활성 NPC: {npcs.Count}개";
-                foreach (var npc in npcs)
+                var statusMessage = $"활성 NPC: {npcs.Count}개";
+                var completedTasks = taskManager.GetCompletedTaskCount();
+                var activeTasks = taskManager.GetActiveTaskCount();
+                var pendingTasks = taskManager.GetPendingTaskCount();
+                var workingNPCs = npcs.Count(n => n.IsBusy());
+                
+                statusMessage += $"\n작업 상태: 완료 {completedTasks}개, 활성 {activeTasks}개, 대기 {pendingTasks}개";
+                statusMessage += $"\n활동 중인 NPC: {workingNPCs}개";
+                
+                // 각 NPC의 상태 정보 추가 (최대 3개만 표시)
+                for (int i = 0; i < Math.Min(npcs.Count, 3); i++)
                 {
-                    var position = new Vector2(npc.getTileX(), npc.getTileY());
-                    var status = npc.IsBusy() ? "작업 중" : "대기 중";
-                    infoMessage += $"\n- {npc.Name}: {status} ({position.X}, {position.Y})";
+                    var npc = npcs[i];
+                    var stateText = npc.IsBusy() ? "작업중" : "대기";
+                    var position = npc.getTileLocation();
+                    statusMessage += $"\n- {npc.Name}: {stateText} ({position.X:F1}, {position.Y:F1})";
                 }
-
-                Game1.addHUDMessage(new HUDMessage(infoMessage, HUDMessage.newQuest_type));
-                _monitor.Log($"NPC 정보 표시: {npcs.Count}개의 NPC", LogLevel.Info);
+                
+                Game1.addHUDMessage(new HUDMessage(statusMessage, HUDMessage.newQuest_type));
+                _monitor.Log($"NPC 상태 표시: {npcs.Count}개 NPC, {activeTasks}개 작업", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _monitor.Log($"NPC 정보 표시 중 오류 발생: {ex.Message}", LogLevel.Error);
-                Game1.addHUDMessage(new HUDMessage("NPC 정보 표시 중 오류 발생!", HUDMessage.error_type));
+                _monitor.Log($"NPC 상태 확인 중 오류: {ex.Message}", LogLevel.Error);
+                Game1.addHUDMessage(new HUDMessage("NPC 상태 확인 중 오류 발생!", HUDMessage.error_type));
             }
         }
 
@@ -165,20 +155,13 @@ namespace AutomatedNPCMod.Core
         {
             try
             {
-                var npcs = _npcManager.GetAllNPCs();
-                var count = npcs.Count;
-
-                foreach (var npc in npcs)
-                {
-                    _npcManager.RemoveNPC(npc.Name);
-                }
-
-                Game1.addHUDMessage(new HUDMessage($"{count}개의 NPC가 제거됨!", HUDMessage.newQuest_type));
-                _monitor.Log($"{count}개의 NPC 제거 완료", LogLevel.Info);
+                var removedCount = _npcManager.RemoveAllNPCs();
+                _taskManager.ClearAllTasks();
+                _monitor.Log($"NPC 제거 완료: {removedCount}개", LogLevel.Info);
             }
             catch (Exception ex)
             {
-                _monitor.Log($"NPC 제거 중 오류 발생: {ex.Message}", LogLevel.Error);
+                _monitor.Log($"NPC 제거 실패: {ex.Message}", LogLevel.Error);
                 Game1.addHUDMessage(new HUDMessage("NPC 제거 중 오류 발생!", HUDMessage.error_type));
             }
         }

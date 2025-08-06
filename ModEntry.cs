@@ -19,6 +19,8 @@ namespace AutomatedNPCMod
         private ConfigManager configManager;
 
         public static ModEntry Instance { get; private set; }
+        public TaskManager TaskManager => taskManager;
+        public NPCManager NPCManager => npcManager;
 
         /// <summary>
         /// 모드 진입점. SMAPI에 의해 호출됩니다.

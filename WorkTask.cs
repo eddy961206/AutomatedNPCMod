@@ -37,6 +37,7 @@ namespace AutomatedNPCMod.Models
         Farming,    // 농사 (씨앗 심기, 물주기, 수확)
         Mining,     // 채굴 (광석, 돌 채굴)
         Foraging,   // 채집 (야생 식물, 과일 수집)
+        Woodcutting, // 벌목 (나무 자르기)
         Fishing,    // 낚시
         Combat,     // 전투
         Crafting,   // 제작

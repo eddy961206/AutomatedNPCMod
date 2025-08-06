@@ -69,6 +69,38 @@ namespace AutomatedNPCMod.Core
         }
 
         /// <summary>
+        /// 플레이어 근처에 테스트 NPC를 생성합니다.
+        /// </summary>
+        /// <returns>생성 성공 여부</returns>
+        public bool CreateTestNPC()
+        {
+            try
+            {
+                // 플레이어 위치 근처에 NPC 생성
+                var playerPosition = new Vector2((int)(Game1.player.position.X / 64f), (int)(Game1.player.position.Y / 64f));
+                var npcPosition = new Vector2(playerPosition.X + 2, playerPosition.Y);
+                
+                // 고유한 이름 생성
+                var npcName = $"Worker_{DateTime.Now.Ticks % 1000}";
+                
+                if (CreateNPC(npcName, npcPosition))
+                {
+                    // HUD 메시지 표시
+                    Game1.addHUDMessage(new HUDMessage($"NPC '{npcName}' 생성됨! 위치: ({npcPosition.X:F1}, {npcPosition.Y:F1})", HUDMessage.newQuest_type));
+                    _monitor.Log($"테스트 NPC '{npcName}' 생성 완료!", LogLevel.Info);
+                    return true;
+                }
+                
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"테스트 NPC 생성 중 오류: {ex.Message}", LogLevel.Error);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 지정된 NPC를 제거합니다.
         /// </summary>
         /// <param name="name">제거할 NPC 이름</param>
@@ -122,7 +154,7 @@ namespace AutomatedNPCMod.Core
                 {
                     if (npc.currentLocation != null)
                     {
-                        npc.Update(gameTime, npc.currentLocation);
+                        npc.update(gameTime, npc.currentLocation);
                     }
                 }
             }
@@ -151,6 +183,58 @@ namespace AutomatedNPCMod.Core
         public List<CustomNPC> GetAllNPCs()
         {
             return _activeNPCs.Values.ToList();
+        }
+
+        /// <summary>
+        /// 모든 NPC를 제거합니다.
+        /// </summary>
+        /// <returns>제거된 NPC 개수</returns>
+        public int RemoveAllNPCs()
+        {
+            try
+            {
+                int removedCount = 0;
+                var npcsList = _activeNPCs.Values.ToList();
+                
+                foreach (var npc in npcsList)
+                {
+                    try
+                    {
+                        // 게임에서 NPC 제거
+                        npc.currentLocation?.characters.Remove(npc);
+                        removedCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        _monitor.Log($"개별 NPC 제거 실패: {ex.Message}", LogLevel.Debug);
+                    }
+                }
+                
+                // 활성 NPC 목록 초기화
+                _activeNPCs.Clear();
+                
+                if (removedCount > 0)
+                {
+                    Game1.addHUDMessage(new HUDMessage($"{removedCount}개의 NPC가 제거됨!", HUDMessage.newQuest_type));
+                }
+                
+                _monitor.Log($"NPC 제거 완료: {removedCount}개", LogLevel.Info);
+                return removedCount;
+            }
+            catch (Exception ex)
+            {
+                _monitor.Log($"NPC 제거 중 오류: {ex.Message}", LogLevel.Error);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 현재 관리 중인 NPC 개수를 반환합니다.
+        /// </summary>
+        /// <returns>NPC 개수</returns>
+        public int GetNPCCount()
+        {
+            return _activeNPCs.Count;
         }
 
         /// <summary>

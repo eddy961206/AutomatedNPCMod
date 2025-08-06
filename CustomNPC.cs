@@ -38,7 +38,7 @@ namespace AutomatedNPCMod.Models
             this.displayName = name;
             this.currentLocation = Game1.currentLocation ?? Game1.getFarm();
             this.speed = 2; // 기본 이동 속도
-            this.collidesWith = StardewValley.Farmer.initialPassable; // 플레이어와 충돌하지 않도록 설정
+            // this.collidesWith = StardewValley.Farmer.initialPassable; // 플레이어와 충돌하지 않도록 설정 - API 변경으로 주석 처리
             this.drawOffset.Y = -16; // 스프라이트 오프셋 조정
         }
 
@@ -65,7 +65,7 @@ namespace AutomatedNPCMod.Models
             else if (_currentTask != null && _currentTask.IsCompleted)
             {
                 // 작업 완료 후 처리 (예: TaskManager에 알림)
-                _monitor.Log($"NPC 	{this.Name}	 작업 	{_currentTask.Id}	 완료.", LogLevel.Debug);
+                _monitor.Log($"NPC {this.Name} 작업 {_currentTask.Id} 완료.", LogLevel.Debug);
                 ModEntry.Instance.TaskManager.CompleteTask(_currentTask.Id, _currentTask.Result);
                 _currentTask = null; // 작업 초기화
             }
@@ -80,12 +80,12 @@ namespace AutomatedNPCMod.Models
         {
             if (_currentTask != null && !_currentTask.IsCompleted)
             {
-                _monitor.Log($"NPC 	{this.Name}	 이미 작업 중입니다: 	{_currentTask.Type}	", LogLevel.Warn);
+                _monitor.Log($"NPC {this.Name} 이미 작업 중입니다: {_currentTask.Type}", LogLevel.Warn);
                 return false;
             }
 
             _currentTask = task;
-            _monitor.Log($"NPC 	{this.Name}	에게 	{task.Type}	 작업 할당됨.", LogLevel.Info);
+            _monitor.Log($"NPC {this.Name}에게 {task.Type} 작업 할당됨.", LogLevel.Info);
             _aiController.SetDestination(task.TargetLocation); // 작업 위치로 이동 시작
             return true;
         }
@@ -97,7 +97,7 @@ namespace AutomatedNPCMod.Models
         {
             if (_currentTask != null)
             {
-                _monitor.Log($"NPC 	{this.Name}	의 현재 작업 	{_currentTask.Type}	을 취소합니다.", LogLevel.Info);
+                _monitor.Log($"NPC {this.Name}의 현재 작업 {_currentTask.Type}을 취소합니다.", LogLevel.Info);
                 _currentTask = null;
                 _aiController.StopMoving();
             }
@@ -112,6 +112,14 @@ namespace AutomatedNPCMod.Models
         }
 
         /// <summary>
+        /// NPC가 현재 대기 중인지 여부를 반환합니다.
+        /// </summary>
+        public bool IsIdle()
+        {
+            return !IsBusy();
+        }
+
+        /// <summary>
         /// NPC가 특정 유형의 작업을 수행할 수 있는지 여부를 확인합니다.
         /// </summary>
         /// <param name="taskType">확인할 작업 유형</param>
@@ -123,11 +131,35 @@ namespace AutomatedNPCMod.Models
         }
 
         /// <summary>
+        /// NPC의 X 타일 좌표를 반환합니다.
+        /// </summary>
+        public int getTileX()
+        {
+            return (int)(this.Position.X / 64f);
+        }
+
+        /// <summary>
+        /// NPC의 Y 타일 좌표를 반환합니다.
+        /// </summary>
+        public int getTileY()
+        {
+            return (int)(this.Position.Y / 64f);
+        }
+
+        /// <summary>
+        /// NPC의 현재 위치를 타일 좌표로 반환합니다.
+        /// </summary>
+        public Vector2 getTileLocation()
+        {
+            return new Vector2(getTileX(), getTileY());
+        }
+
+        /// <summary>
         /// NPC의 현재 위치를 타일 좌표로 반환합니다.
         /// </summary>
         public Vector2 GetCurrentTilePosition()
         {
-            return new Vector2(getTileX(), getTileY());
+            return getTileLocation();
         }
 
         /// <summary>
@@ -155,7 +187,7 @@ namespace AutomatedNPCMod.Models
         }
 
         /// <summary>
-        /// NPC의 작업 실행기를 반환합니다.
+        /// NPC의 워크 실행기를 반환합니다.
         /// </summary>
         public WorkExecutor GetWorkExecutor()
         {

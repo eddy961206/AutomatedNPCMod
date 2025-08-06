@@ -109,32 +109,62 @@ namespace AutomatedNPCMod.Models
         /// <param name="deltaTime">프레임 간 시간</param>
         private void HandleMovingState(float deltaTime)
         {
-            if (_moveTimer >= MOVE_INTERVAL)
+            if (!_destination.HasValue) 
             {
-                // 다음 타일로 이동
-                var targetPixelPos = _nextTile * 64f; // 타일 좌표를 픽셀 좌표로 변환
-                _npc.Position = targetPixelPos;
-                _npc.setTileLocation(_nextTile);
+                _currentState = AIState.Idle;
+                return;
+            }
 
+            var currentPos = _npc.GetCurrentTilePosition();
+            var destX = _destination.Value.X;
+            var destY = _destination.Value.Y;
+
+            // 거리 계산
+            var distance = Math.Sqrt(Math.Pow(destX - currentPos.X, 2) + Math.Pow(destY - currentPos.Y, 2));
+            
+            // 목표 지점 근처에 도착했으면 작업 시작
+            if (distance < 1.5f)
+            {
+                _currentState = AIState.Working;
                 _moveTimer = 0f;
+                return;
+            }
 
-                // 다음 경로가 있는지 확인
-                if (_currentPath.Count > 0)
+            // 자연스러운 이동을 위해 더 작은 단위로 이동
+            _moveTimer += deltaTime;
+            
+            if (_moveTimer >= 0.3f) // 0.3초마다 이동 (더 자주)
+            {
+                // 방향 계산 (더 정밀하게)
+                var deltaX = destX - currentPos.X;
+                var deltaY = destY - currentPos.Y;
+                
+                // 거리가 멀면 더 큰 스텝, 가까우면 작은 스텝
+                var stepSize = distance > 3.0f ? 0.5f : 0.25f;
+                
+                var moveX = 0f;
+                var moveY = 0f;
+                
+                if (Math.Abs(deltaX) > 0.1f)
+                    moveX = deltaX > 0 ? stepSize : -stepSize;
+                if (Math.Abs(deltaY) > 0.1f)
+                    moveY = deltaY > 0 ? stepSize : -stepSize;
+                
+                // Stardew Valley NPC 이동 시스템 사용
+                if (TryMoveNPCInGame(_npc, (int)Math.Sign(moveX), (int)Math.Sign(moveY)))
                 {
-                    _nextTile = _currentPath.Dequeue();
+                    // 게임의 이동 시스템 사용 성공
                 }
                 else
                 {
-                    // 목표 지점에 도달
-                    if (HasReachedDestination())
-                    {
-                        _currentState = AIState.Working;
-                    }
-                    else
-                    {
-                        _currentState = AIState.Idle;
-                    }
+                    // 대안: 부드러운 위치 업데이트
+                    var newX = currentPos.X + moveX;
+                    var newY = currentPos.Y + moveY;
+                    var newPosition = new Vector2(newX * 64f, newY * 64f);
+                    _npc.Position = newPosition;
                 }
+                
+                _moveTimer = 0f;
             }
         }
 
@@ -174,6 +204,84 @@ namespace AutomatedNPCMod.Models
         public void SetState(AIState state)
         {
             _currentState = state;
+        }
+
+        /// <summary>
+        /// Stardew Valley의 NPC 이동 시스템을 사용해서 NPC를 이동시킵니다.
+        /// </summary>
+        /// <param name="npc">이동시킬 NPC</param>
+        /// <param name="moveX">X 방향 이동 (-1, 0, 1)</param>
+        /// <param name="moveY">Y 방향 이동 (-1, 0, 1)</param>
+        /// <returns>이동 성공 여부</returns>
+        private bool TryMoveNPCInGame(NPC npc, int moveX, int moveY)
+        {
+            try
+            {
+                // 여러 Stardew Valley NPC 이동 방법 시도
+                
+                // 방법 1: moveTowardDirection 메서드 사용
+                var moveTowardMethod = npc.GetType().GetMethod("moveTowardDirection");
+                if (moveTowardMethod != null)
+                {
+                    // 방향 계산 (0=up, 1=right, 2=down, 3=left)
+                    int direction = -1;
+                    if (moveY < 0) direction = 0; // up
+                    else if (moveX > 0) direction = 1; // right
+                    else if (moveY > 0) direction = 2; // down
+                    else if (moveX < 0) direction = 3; // left
+                    
+                    if (direction >= 0)
+                    {
+                        moveTowardMethod.Invoke(npc, new object[] { direction, false });
+                        return true;
+                    }
+                }
+
+                // 방법 2: velocity 설정
+                var velocityField = npc.GetType().GetField("velocity");
+                var velocityProp = npc.GetType().GetProperty("velocity");
+                
+                if (velocityField != null || velocityProp != null)
+                {
+                    var velocity = new Vector2((float)moveX * 2f, (float)moveY * 2f); // 속도 조정
+                    
+                    if (velocityField != null)
+                    {
+                        velocityField.SetValue(npc, velocity);
+                    }
+                    else
+                    {
+                        velocityProp?.SetValue(npc, velocity);
+                    }
+                    
+                    return true;
+                }
+
+                // 방법 3: speed와 방향 설정
+                var speedField = npc.GetType().GetField("speed");
+                var facingDirectionField = npc.GetType().GetField("facingDirection");
+                
+                if (speedField != null && facingDirectionField != null)
+                {
+                    speedField.SetValue(npc, 2); // 이동 속도
+                    
+                    // 방향 설정
+                    int direction = 2; // 기본값 (down)
+                    if (moveY < 0) direction = 0; // up
+                    else if (moveX > 0) direction = 1; // right
+                    else if (moveY > 0) direction = 2; // down
+                    else if (moveX < 0) direction = 3; // left
+                    
+                    facingDirectionField.SetValue(npc, direction);
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 

@@ -14,7 +14,7 @@ namespace AutomatedNPCMod.Models
     public class WorkExecutor
     {
         private readonly CustomNPC _npc;
-        private readonly Dictionary<TaskType, IWorkHandler> _workHandlers;
+        private Dictionary<TaskType, IWorkHandler> _workHandlers;
 
         public WorkExecutor(CustomNPC npc)
         {
@@ -31,7 +31,8 @@ namespace AutomatedNPCMod.Models
             {
                 { TaskType.Farming, new FarmingHandler() },
                 { TaskType.Mining, new MiningHandler() },
-                { TaskType.Foraging, new ForagingHandler() }
+                { TaskType.Foraging, new ForagingHandler() },
+                { TaskType.Woodcutting, new WoodcuttingHandler() }
             };
         }
 
@@ -165,7 +166,7 @@ namespace AutomatedNPCMod.Models
             if (dirt.crop != null)
             {
                 var crop = dirt.crop;
-                var harvestItem = new StardewValley.Object(crop.indexOfHarvest.Value, 1);
+                var harvestItem = new StardewValley.Object(crop.indexOfHarvest.Value.ToString(), 1);
                 _result.ItemsObtained.Add(harvestItem);
                 _result.GoldEarned += harvestItem.Price;
                 
@@ -176,7 +177,8 @@ namespace AutomatedNPCMod.Models
 
         private void PlantSeed(HoeDirt dirt, int seedId)
         {
-            dirt.plant(seedId, (int)Game1.player.getTileX(), (int)Game1.player.getTileY(), Game1.player, false, Game1.currentLocation);
+            var playerTile = new Vector2((int)(Game1.player.position.X / 64f), (int)(Game1.player.position.Y / 64f));
+            dirt.plant(seedId.ToString(), Game1.player, false);
             _result.GoldEarned += 5; // 심기 보상
         }
 
@@ -260,7 +262,7 @@ namespace AutomatedNPCMod.Models
                 else
                 {
                     // 기본 돌 생성 및 채굴 (시뮬레이션)
-                    var stone = new StardewValley.Object(390, 1); // 돌
+                    var stone = new StardewValley.Object("390", 1); // 돌
                     _result.ItemsObtained.Add(stone);
                     _result.GoldEarned = stone.Price;
                 }
@@ -280,13 +282,13 @@ namespace AutomatedNPCMod.Models
             // 랜덤하게 채굴 결과 결정
             var random = Game1.random.Next(1, 100);
             if (random <= 10) // 10% 확률로 구리 광석
-                return new StardewValley.Object(378, 1);
+                return new StardewValley.Object("378", 1);
             else if (random <= 20) // 10% 확률로 철 광석
-                return new StardewValley.Object(380, 1);
+                return new StardewValley.Object("380", 1);
             else if (random <= 25) // 5% 확률로 금 광석
-                return new StardewValley.Object(384, 1);
+                return new StardewValley.Object("384", 1);
             else // 나머지는 돌
-                return new StardewValley.Object(390, 1);
+                return new StardewValley.Object("390", 1);
         }
 
         public bool CanHandle(WorkTask task) => task.Type == TaskType.Mining;
@@ -342,7 +344,7 @@ namespace AutomatedNPCMod.Models
                 // 해당 위치에 채집 가능한 아이템이 있는지 확인
                 if (location.objects.TryGetValue(targetTile, out StardewValley.Object obj))
                 {
-                    if (obj.isForage(location))
+                    if (obj.isForage())
                     {
                         // 채집 아이템 수집
                         _result.ItemsObtained.Add(obj);
@@ -375,18 +377,125 @@ namespace AutomatedNPCMod.Models
             // 랜덤하게 채집 결과 결정
             var random = Game1.random.Next(1, 100);
             if (random <= 30) // 30% 확률로 야생 양파
-                return new StardewValley.Object(399, 1);
+                return new StardewValley.Object("399", 1);
             else if (random <= 50) // 20% 확률로 민들레
-                return new StardewValley.Object(18, 1);
+                return new StardewValley.Object("18", 1);
             else if (random <= 70) // 20% 확률로 리크
-                return new StardewValley.Object(20, 1);
+                return new StardewValley.Object("20", 1);
             else if (random <= 85) // 15% 확률로 야생 마늘
-                return new StardewValley.Object(22, 1);
+                return new StardewValley.Object("22", 1);
             else // 나머지는 나무 가지
-                return new StardewValley.Object(388, 1);
+                return new StardewValley.Object("388", 1);
         }
 
         public bool CanHandle(WorkTask task) => task.Type == TaskType.Foraging;
+        public TaskResult GetResult() => _result;
+        public void Initialize(CustomNPC npc) { }
+        public void Cleanup() { }
+    }
+
+    /// <summary>
+    /// 나무 베기 작업을 처리하는 클래스.
+    /// </summary>
+    public class WoodcuttingHandler : IWorkHandler
+    {
+        private TaskResult _result;
+        private float _workTimer;
+        private const float WORK_DURATION = 3.5f; // 나무 베기는 3.5초
+
+        public void Execute(CustomNPC npc, WorkTask task, GameTime gameTime)
+        {
+            if (task.IsCompleted) return;
+
+            if (!npc.GetAIController().HasReachedDestination())
+            {
+                return;
+            }
+
+            if (task.StartTime == null)
+            {
+                task.StartTime = DateTime.Now;
+                _workTimer = 0f;
+                _result = new TaskResult();
+                npc.GetAIController().SetState(AIState.Working);
+            }
+
+            _workTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            if (_workTimer >= WORK_DURATION)
+            {
+                PerformWoodcuttingAction(npc, task);
+                task.IsCompleted = true;
+                task.CompletedTime = DateTime.Now;
+                task.Result = _result;
+            }
+        }
+
+        private void PerformWoodcuttingAction(CustomNPC npc, WorkTask task)
+        {
+            var location = npc.currentLocation;
+            var targetTile = task.TargetLocation;
+
+            try
+            {
+                // 해당 위치에 나무가 있는지 확인
+                if (location.terrainFeatures.TryGetValue(targetTile, out TerrainFeature feature))
+                {
+                    if (feature is Tree tree && tree.growthStage.Value >= 5)
+                    {
+                        // 성장한 나무 베기
+                        var woodAmount = Game1.random.Next(8, 15); // 8-14개의 나무
+                        var wood = new StardewValley.Object("388", woodAmount); // 나무 ID: 388
+                        _result.ItemsObtained.Add(wood);
+                        _result.GoldEarned = wood.Price * woodAmount;
+                        
+                        // 나무 제거
+                        location.terrainFeatures.Remove(targetTile);
+                        
+                        // 씨앗 떨어트리기 (확률적)
+                        if (Game1.random.NextDouble() < 0.05) // 5% 확률
+                        {
+                            var seed = GetTreeSeed(tree);
+                            if (seed != null)
+                            {
+                                _result.ItemsObtained.Add(seed);
+                                _result.GoldEarned += seed.Price;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // 나무가 없는 경우 시뮬레이션
+                    var wood = new StardewValley.Object("388", 10);
+                    _result.ItemsObtained.Add(wood);
+                    _result.GoldEarned = wood.Price * 10;
+                }
+
+                _result.Success = true;
+                _result.ExperienceGained = 12;
+            }
+            catch (Exception ex)
+            {
+                _result.Success = false;
+                _result.ErrorMessage = $"나무 베기 작업 중 오류: {ex.Message}";
+            }
+        }
+
+        private StardewValley.Object GetTreeSeed(Tree tree)
+        {
+            // 나무 타입에 따라 해당하는 씨앗 반환
+            return tree.treeType.Value.ToString() switch
+            {
+                "1" => new StardewValley.Object("309", 1), // 떡갈나무 씨앗
+                "2" => new StardewValley.Object("310", 1), // 단풍나무 씨앗
+                "3" => new StardewValley.Object("311", 1), // 소나무 씨앗
+                "6" => new StardewValley.Object("292", 1), // 마호가니 씨앗
+                _ => new StardewValley.Object("309", 1)  // 기본값
+            };
+        }
+
+        public bool CanHandle(WorkTask task) => task.Type == TaskType.Woodcutting;
         public TaskResult GetResult() => _result;
         public void Initialize(CustomNPC npc) { }
         public void Cleanup() { }

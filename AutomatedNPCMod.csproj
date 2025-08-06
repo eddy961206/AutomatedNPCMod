@@ -5,25 +5,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableHarmony>true</EnableHarmony>
+    <GamePath>/mnt/d/Steam/steamapps/common/Stardew Valley</GamePath>
+    <EnableModDeploy>true</EnableModDeploy>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="StardewModdingAPI">
-      <HintPath>D:\Steam\steamapps\common\Stardew Valley\StardewModdingAPI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
+    <PackageReference Include="Pathoschild.Stardew.ModBuildConfig" Version="4.1.1" />
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ModEntry.cs" />
-    <Compile Remove="NPCManager.cs" />
-    <Compile Remove="TaskManager.cs" />
-    <Compile Remove="CustomNPC.cs" />
-    <Compile Remove="AIController.cs" />
-    <Compile Remove="WorkExecutor.cs" />
-    <Compile Remove="UIManager.cs" />
-    <Compile Remove="ConfigManager.cs" />
-    <Compile Remove="WorkTask.cs" />
+    <Compile Remove="SimpleModEntry.cs" />
     <Compile Remove="backup\**\*.cs" />
   </ItemGroup>
 
