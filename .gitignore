@@ -1,1 +1,40 @@
-/backup
+# Build outputs
+bin/
+obj/
+*.dll
+*.zip
+
+# Backup folders
+backup/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Config files (if they contain sensitive data)
+config.json
+
+# Documentation PDFs (regeneratable)
+*.pdf
+
+# Installation scripts
+dotnet-install.sh
+build.bat
+
+# Test and summary files (optional - can be kept if needed)
+*_summary.md
+comprehensive_report.md
+prototype_status.md
+todo.md
+stardew_mod_test_guide.md
