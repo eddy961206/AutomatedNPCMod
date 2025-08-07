@@ -49,6 +49,9 @@ namespace AutomatedNPCMod.Models
                 case AIState.Working:
                     HandleWorkingState();
                     break;
+                case AIState.UsingTool:
+                    HandleUsingToolState();
+                    break;
             }
         }
 
@@ -175,6 +178,24 @@ namespace AutomatedNPCMod.Models
         {
             // 작업 중일 때의 행동
             // 실제 작업은 WorkExecutor에서 처리되므로 여기서는 상태만 유지
+            // 도구가 필요한 작업인 경우 UsingTool 상태로 전환
+            if (ShouldStartUsingTool())
+            {
+                _currentState = AIState.UsingTool;
+            }
+        }
+
+        /// <summary>
+        /// 도구 사용 상태를 처리합니다.
+        /// </summary>
+        private void HandleUsingToolState()
+        {
+            // 도구 사용 중일 때의 행동
+            // CustomNPC에서 도구 사용이 완료되면 Working 상태로 돌아감
+            if (!IsNPCUsingTool())
+            {
+                _currentState = AIState.Working;
+            }
         }
 
         /// <summary>
@@ -204,6 +225,68 @@ namespace AutomatedNPCMod.Models
         public void SetState(AIState state)
         {
             _currentState = state;
+        }
+
+        /// <summary>
+        /// 도구 사용을 시작해야 하는지 확인합니다.
+        /// </summary>
+        /// <returns>도구 사용 시작 여부</returns>
+        private bool ShouldStartUsingTool()
+        {
+            // CustomNPC의 현재 작업이 도구가 필요한 작업인지 확인
+            var currentTask = _npc.GetCurrentTask();
+            if (currentTask == null) return false;
+
+            // 작업 타입에 따라 도구 필요 여부 확인
+            return currentTask.Type switch
+            {
+                TaskType.Farming => true,    // 농사는 호미/물뿌리개 필요
+                TaskType.Woodcutting => true, // 나무 베기는 도끼 필요
+                TaskType.Mining => true,      // 채굴은 곡괭이 필요
+                TaskType.Foraging => false,   // 채집은 도구 불필요
+                _ => false
+            };
+        }
+
+        /// <summary>
+        /// NPC가 현재 도구를 사용 중인지 확인합니다.
+        /// </summary>
+        /// <returns>도구 사용 중 여부</returns>
+        private bool IsNPCUsingTool()
+        {
+            return _npc.IsUsingTool();
+        }
+
+        /// <summary>
+        /// 도구 사용 상태인지 확인합니다.
+        /// </summary>
+        /// <returns>도구 사용 상태 여부</returns>
+        public bool IsUsingTool()
+        {
+            return _currentState == AIState.UsingTool;
+        }
+
+        /// <summary>
+        /// 도구 사용 상태로 전환합니다.
+        /// </summary>
+        /// <param name="targetTile">도구 사용 대상 타일</param>
+        public void StartUsingTool(Vector2 targetTile)
+        {
+            _currentState = AIState.UsingTool;
+            // NPC에게 도구 사용 시작을 알림
+            _npc.StartUsingTool(targetTile);
+        }
+
+        /// <summary>
+        /// 도구 사용을 중지하고 이전 상태로 돌아갑니다.
+        /// </summary>
+        public void StopUsingTool()
+        {
+            if (_currentState == AIState.UsingTool)
+            {
+                _currentState = AIState.Working;
+                _npc.StopUsingTool();
+            }
         }
 
         /// <summary>
@@ -293,6 +376,7 @@ namespace AutomatedNPCMod.Models
         Idle,       // 대기
         Moving,     // 이동 중
         Working,    // 작업 중
+        UsingTool,  // 도구 사용 중
         Returning,  // 복귀 중
         Resting     // 휴식 중
     }

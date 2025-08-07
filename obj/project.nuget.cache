@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "bxFQQVXuHkgmIXGId8NYS1iK1rIJBwegTf43k0EIeFU5RAHZuIDg1mcYbDdh4EdRZotjz/eh8pN5EVIAebbSeA==",
+  "dgSpecHash": "p/3LzoPdkZ3eOT02k4XYpCCmKAk07ox028nTwzpvynY2oK1NK1QSJZ5r4JxYwUH321vlyv6CotYkCKbpQQwVhw==",
   "success": true,
-  "projectFilePath": "/mnt/d/Steam/steamapps/common/Stardew Valley/Mods/AutomatedNPCMod/AutomatedNPCMod.csproj",
+  "projectFilePath": "D:\\Steam\\steamapps\\common\\Stardew Valley\\Mods\\AutomatedNPCMod\\AutomatedNPCMod.csproj",
   "expectedPackageFiles": [
-    "/home/seung/.nuget/packages/pathoschild.stardew.modbuildconfig/4.1.1/pathoschild.stardew.modbuildconfig.4.1.1.nupkg.sha512"
+    "C:\\Users\\seung\\.nuget\\packages\\pathoschild.stardew.modbuildconfig\\4.1.1\\pathoschild.stardew.modbuildconfig.4.1.1.nupkg.sha512"
   ],
   "logs": []
 }

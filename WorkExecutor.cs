@@ -79,6 +79,9 @@ namespace AutomatedNPCMod.Models
     {
         private TaskResult _result;
         private float _workTimer;
+        private FarmingStep _currentStep;
+        private bool _animationStarted;
+        private ToolType _requiredTool;
         private const float WORK_DURATION = 3.0f; // 작업 완료까지 3초
 
         public void Execute(CustomNPC npc, WorkTask task, GameTime gameTime)
@@ -97,13 +100,37 @@ namespace AutomatedNPCMod.Models
                 task.StartTime = DateTime.Now;
                 _workTimer = 0f;
                 _result = new TaskResult();
+                _animationStarted = false;
+                
+                // 작업 단계 결정
+                _currentStep = DetermineFarmingStep(npc, task);
+                _requiredTool = GetRequiredTool(_currentStep);
+                
+                // 필요한 도구 설정
+                npc.SetRequiredTool(_requiredTool);
                 npc.GetAIController().SetState(AIState.Working);
+            }
+
+            // 도구 사용 애니메이션 시작
+            if (!_animationStarted && _requiredTool != ToolType.None)
+            {
+                npc.GetAIController().StartUsingTool(task.TargetLocation);
+                _animationStarted = true;
             }
 
             _workTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            // 작업 완료 확인
-            if (_workTimer >= WORK_DURATION)
+            // 도구 사용 애니메이션이 완료되면 실제 작업 수행
+            if (_animationStarted && npc.IsToolUseCompleted())
+            {
+                PerformFarmingAction(npc, task);
+                task.IsCompleted = true;
+                task.CompletedTime = DateTime.Now;
+                task.Result = _result;
+            }
+            
+            // 타임아웃 방지 (너무 오래 걸리는 경우)
+            else if (_workTimer >= WORK_DURATION * 2)
             {
                 PerformFarmingAction(npc, task);
                 task.IsCompleted = true;
@@ -170,6 +197,9 @@ namespace AutomatedNPCMod.Models
                 _result.ItemsObtained.Add(harvestItem);
                 _result.GoldEarned += harvestItem.Price;
                 
+                // 실제로 플레이어 인벤토리에 아이템 추가
+                Game1.player.addItemToInventoryBool(harvestItem, false);
+                
                 // 작물 제거
                 dirt.crop = null;
             }
@@ -179,6 +209,7 @@ namespace AutomatedNPCMod.Models
         {
             var playerTile = new Vector2((int)(Game1.player.position.X / 64f), (int)(Game1.player.position.Y / 64f));
             dirt.plant(seedId.ToString(), Game1.player, false);
+            
             _result.GoldEarned += 5; // 심기 보상
         }
 
@@ -195,6 +226,52 @@ namespace AutomatedNPCMod.Models
             _result.GoldEarned += 3; // 갈기 보상
         }
 
+        /// <summary>
+        /// 현재 상황에 따른 농사 작업 단계를 결정합니다.
+        /// </summary>
+        private FarmingStep DetermineFarmingStep(CustomNPC npc, WorkTask task)
+        {
+            var location = npc.currentLocation;
+            var targetTile = task.TargetLocation;
+
+            // 해당 위치에 작물이 있는지 확인
+            if (location.terrainFeatures.TryGetValue(targetTile, out TerrainFeature feature))
+            {
+                if (feature is HoeDirt dirt)
+                {
+                    if (dirt.crop != null && dirt.crop.fullyGrown.Value)
+                    {
+                        return FarmingStep.Harvest; // 수확
+                    }
+                    else if (dirt.crop == null)
+                    {
+                        return FarmingStep.Plant; // 씨앗 심기 (도구 불필요)
+                    }
+                    else
+                    {
+                        return FarmingStep.Water; // 물주기
+                    }
+                }
+            }
+            
+            return FarmingStep.Till; // 땅 갈기
+        }
+
+        /// <summary>
+        /// 농사 단계에 따른 필요한 도구를 반환합니다.
+        /// </summary>
+        private ToolType GetRequiredTool(FarmingStep step)
+        {
+            return step switch
+            {
+                FarmingStep.Till => ToolType.Hoe,
+                FarmingStep.Plant => ToolType.None, // 손으로 심기
+                FarmingStep.Water => ToolType.WateringCan,
+                FarmingStep.Harvest => ToolType.None, // 손으로 수확
+                _ => ToolType.None
+            };
+        }
+
         public bool CanHandle(WorkTask task) => task.Type == TaskType.Farming;
         public TaskResult GetResult() => _result;
         public void Initialize(CustomNPC npc) { }
@@ -208,6 +285,7 @@ namespace AutomatedNPCMod.Models
     {
         private TaskResult _result;
         private float _workTimer;
+        private bool _animationStarted;
         private const float WORK_DURATION = 4.0f; // 채굴은 4초
 
         public void Execute(CustomNPC npc, WorkTask task, GameTime gameTime)
@@ -224,12 +302,32 @@ namespace AutomatedNPCMod.Models
                 task.StartTime = DateTime.Now;
                 _workTimer = 0f;
                 _result = new TaskResult();
+                _animationStarted = false;
+                
+                // 곡괭이 설정
+                npc.SetRequiredTool(ToolType.Pickaxe);
                 npc.GetAIController().SetState(AIState.Working);
+            }
+
+            // 도구 사용 애니메이션 시작
+            if (!_animationStarted)
+            {
+                npc.GetAIController().StartUsingTool(task.TargetLocation);
+                _animationStarted = true;
             }
 
             _workTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (_workTimer >= WORK_DURATION)
+            // 도구 사용 애니메이션이 완료되면 실제 작업 수행
+            if (_animationStarted && npc.IsToolUseCompleted())
+            {
+                PerformMiningAction(npc, task);
+                task.IsCompleted = true;
+                task.CompletedTime = DateTime.Now;
+                task.Result = _result;
+            }
+            // 타임아웃 방지
+            else if (_workTimer >= WORK_DURATION * 2)
             {
                 PerformMiningAction(npc, task);
                 task.IsCompleted = true;
@@ -255,6 +353,9 @@ namespace AutomatedNPCMod.Models
                         _result.ItemsObtained.Add(miningResult);
                         _result.GoldEarned = miningResult.Price;
                         
+                        // 실제로 플레이어 인벤토리에 아이템 추가
+                        Game1.player.addItemToInventoryBool(miningResult, false);
+                        
                         // 객체 제거
                         location.objects.Remove(targetTile);
                     }
@@ -265,6 +366,9 @@ namespace AutomatedNPCMod.Models
                     var stone = new StardewValley.Object("390", 1); // 돌
                     _result.ItemsObtained.Add(stone);
                     _result.GoldEarned = stone.Price;
+                    
+                    // 실제로 플레이어 인벤토리에 아이템 추가
+                    Game1.player.addItemToInventoryBool(stone, false);
                 }
 
                 _result.Success = true;
@@ -304,6 +408,7 @@ namespace AutomatedNPCMod.Models
     {
         private TaskResult _result;
         private float _workTimer;
+        private bool _actionStarted;
         private const float WORK_DURATION = 2.0f; // 채집은 2초
 
         public void Execute(CustomNPC npc, WorkTask task, GameTime gameTime)
@@ -320,11 +425,24 @@ namespace AutomatedNPCMod.Models
                 task.StartTime = DateTime.Now;
                 _workTimer = 0f;
                 _result = new TaskResult();
+                _actionStarted = false;
+                
+                // 채집은 도구가 필요 없으므로 None 설정
+                npc.SetRequiredTool(ToolType.None);
                 npc.GetAIController().SetState(AIState.Working);
+            }
+
+            // 채집 액션 시작 (도구 없이 손으로 채집)
+            if (!_actionStarted)
+            {
+                // 채집은 도구 애니메이션 대신 간단한 구부리기 동작
+                npc.GetAIController().SetState(AIState.Working);
+                _actionStarted = true;
             }
 
             _workTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
+            // 간단한 타이머 기반으로 채집 완료
             if (_workTimer >= WORK_DURATION)
             {
                 PerformForagingAction(npc, task);
@@ -350,6 +468,9 @@ namespace AutomatedNPCMod.Models
                         _result.ItemsObtained.Add(obj);
                         _result.GoldEarned = obj.Price;
                         
+                        // 실제로 플레이어 인벤토리에 아이템 추가
+                        Game1.player.addItemToInventoryBool(obj, false);
+                        
                         // 객체 제거
                         location.objects.Remove(targetTile);
                     }
@@ -360,6 +481,9 @@ namespace AutomatedNPCMod.Models
                     var foragingResult = GetForagingResult();
                     _result.ItemsObtained.Add(foragingResult);
                     _result.GoldEarned = foragingResult.Price;
+                    
+                    // 실제로 플레이어 인벤토리에 아이템 추가
+                    Game1.player.addItemToInventoryBool(foragingResult, false);
                 }
 
                 _result.Success = true;
@@ -401,6 +525,7 @@ namespace AutomatedNPCMod.Models
     {
         private TaskResult _result;
         private float _workTimer;
+        private bool _animationStarted;
         private const float WORK_DURATION = 3.5f; // 나무 베기는 3.5초
 
         public void Execute(CustomNPC npc, WorkTask task, GameTime gameTime)
@@ -417,12 +542,32 @@ namespace AutomatedNPCMod.Models
                 task.StartTime = DateTime.Now;
                 _workTimer = 0f;
                 _result = new TaskResult();
+                _animationStarted = false;
+                
+                // 도끼 설정
+                npc.SetRequiredTool(ToolType.Axe);
                 npc.GetAIController().SetState(AIState.Working);
+            }
+
+            // 도구 사용 애니메이션 시작
+            if (!_animationStarted)
+            {
+                npc.GetAIController().StartUsingTool(task.TargetLocation);
+                _animationStarted = true;
             }
 
             _workTimer += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-            if (_workTimer >= WORK_DURATION)
+            // 도구 사용 애니메이션이 완료되면 실제 작업 수행
+            if (_animationStarted && npc.IsToolUseCompleted())
+            {
+                PerformWoodcuttingAction(npc, task);
+                task.IsCompleted = true;
+                task.CompletedTime = DateTime.Now;
+                task.Result = _result;
+            }
+            // 타임아웃 방지
+            else if (_workTimer >= WORK_DURATION * 2)
             {
                 PerformWoodcuttingAction(npc, task);
                 task.IsCompleted = true;
@@ -449,6 +594,9 @@ namespace AutomatedNPCMod.Models
                         _result.ItemsObtained.Add(wood);
                         _result.GoldEarned = wood.Price * woodAmount;
                         
+                        // 실제로 플레이어 인벤토리에 나무 추가
+                        Game1.player.addItemToInventoryBool(wood, false);
+                        
                         // 나무 제거
                         location.terrainFeatures.Remove(targetTile);
                         
@@ -460,6 +608,9 @@ namespace AutomatedNPCMod.Models
                             {
                                 _result.ItemsObtained.Add(seed);
                                 _result.GoldEarned += seed.Price;
+                                
+                                // 실제로 플레이어 인벤토리에 씨앗 추가
+                                Game1.player.addItemToInventoryBool(seed, false);
                             }
                         }
                     }
@@ -470,6 +621,9 @@ namespace AutomatedNPCMod.Models
                     var wood = new StardewValley.Object("388", 10);
                     _result.ItemsObtained.Add(wood);
                     _result.GoldEarned = wood.Price * 10;
+                    
+                    // 실제로 플레이어 인벤토리에 나무 추가
+                    Game1.player.addItemToInventoryBool(wood, false);
                 }
 
                 _result.Success = true;
@@ -499,6 +653,17 @@ namespace AutomatedNPCMod.Models
         public TaskResult GetResult() => _result;
         public void Initialize(CustomNPC npc) { }
         public void Cleanup() { }
+    }
+
+    /// <summary>
+    /// 농사 작업 단계를 정의하는 열거형
+    /// </summary>
+    public enum FarmingStep
+    {
+        Till,       // 땅 갈기
+        Plant,      // 씨앗 심기
+        Water,      // 물주기
+        Harvest     // 수확하기
     }
 }
 

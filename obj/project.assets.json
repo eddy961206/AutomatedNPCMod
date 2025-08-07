@@ -37,19 +37,19 @@
     ]
   },
   "packageFolders": {
-    "/home/seung/.nuget/packages/": {}
+    "C:\\Users\\seung\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/mnt/d/Steam/steamapps/common/Stardew Valley/Mods/AutomatedNPCMod/AutomatedNPCMod.csproj",
+      "projectUniqueName": "D:\\Steam\\steamapps\\common\\Stardew Valley\\Mods\\AutomatedNPCMod\\AutomatedNPCMod.csproj",
       "projectName": "AutomatedNPCMod",
-      "projectPath": "/mnt/d/Steam/steamapps/common/Stardew Valley/Mods/AutomatedNPCMod/AutomatedNPCMod.csproj",
-      "packagesPath": "/home/seung/.nuget/packages/",
-      "outputPath": "/mnt/d/Steam/steamapps/common/Stardew Valley/Mods/AutomatedNPCMod/obj/",
+      "projectPath": "D:\\Steam\\steamapps\\common\\Stardew Valley\\Mods\\AutomatedNPCMod\\AutomatedNPCMod.csproj",
+      "packagesPath": "C:\\Users\\seung\\.nuget\\packages\\",
+      "outputPath": "D:\\Steam\\steamapps\\common\\Stardew Valley\\Mods\\AutomatedNPCMod\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/home/seung/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\seung\\AppData\\Roaming\\NuGet\\NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net6.0"
@@ -94,7 +94,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/home/seung/dotnet/sdk/6.0.428/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.428\\RuntimeIdentifierGraph.json"
       }
     }
   }
